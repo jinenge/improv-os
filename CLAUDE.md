@@ -28,6 +28,7 @@
 appId 命名空间：dock=`app:<id>`，搜索=slug，浏览器=`web:<djb2>`。
 
 ⚠️ 实测坑（2026-06-11）：
+- **.env 加载顺序（2026-06-12 事故）**：ES import 全部提升到模块体之前求值——lib 在模块层读 `process.env`（如 opencode.mjs 的 OC_*）时 .env 还没注入，永远拿默认值。OC_PROVIDER 默认名一改慢轨全断（之前 default==实际值纯属侥幸）。修复：`server/lib/env.mjs` 作为 index.mjs **第一个 import**
 - Node 20+ `autoSelectFamily` 以 `all:true` 调自定义 lookup，须返回数组（已修）
 - Spotlight"获取/完整版"路径必须传 `/api/search` 返回的 slug，否则 appId 为空、桥不接线（已修）
 - open-meteo 被源站网络出口 502 拦截；prompt 内推荐数据源用 wttr.in / exchangerate-api / hacker-news（均实测可达）

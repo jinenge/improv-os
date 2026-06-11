@@ -1,5 +1,6 @@
 // 现编OS — 单进程服务：静态托管 + SSE 生成代理 + 自编译/自修复循环 + 文件缓存 + 限流
 // 零 npm 依赖。key 只存在于环境变量/.env，永不下发前端。
+import './lib/env.mjs';   // 必须最先：.env 注入要赶在一切模块层 env 读取之前（import 提升坑）
 import http from 'node:http';
 import https from 'node:https';
 import fs from 'node:fs';
@@ -16,10 +17,6 @@ import { makeGate } from './lib/gate.mjs';
 import { clientIp, makeOriginGuard } from './lib/origin.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-for (const line of (fs.existsSync(path.join(ROOT, '.env')) ? fs.readFileSync(path.join(ROOT, '.env'), 'utf8').split('\n') : [])) {
-  const m = line.match(/^([A-Z_]+)=(.*)$/);
-  if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
-}
 
 const PORT = Number(process.env.PORT || 7100);
 const BASE_URL = process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com';
