@@ -50,6 +50,11 @@ export async function deleteSession(sid, dir) {
   try { await ocRequest('DELETE', `/session/${sid}` + q(dir), null, 5000); } catch {}
 }
 
+// 列出某工作目录下的全部会话（启动时清孤儿用；improv-os 是该目录唯一客户端）
+export async function listSessions(dir) {
+  try { const r = await ocRequest('GET', '/session' + q(dir), null, 5000); return Array.isArray(r) ? r : []; } catch { return []; }
+}
+
 // 订阅事件流：onEvent(evt) 收到每个解析后的事件对象；返回 stop() 关闭连接。
 export function subscribeEvents(dir, onEvent) {
   const req = http.request({ host: OC_HOST, port: OC_PORT, method: 'GET', path: '/event' + q(dir), timeout: 0 }, res => {

@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { safeGet } from './lib/ssrf.mjs';
 import { makeStore } from './lib/store.mjs';
 import { makeLimiter } from './lib/ratelimit.mjs';
-import { ocHealth, createSession, sendMessage, deleteSession, subscribeEvents } from './lib/opencode.mjs';
+import { ocHealth, createSession, sendMessage, deleteSession, listSessions, subscribeEvents } from './lib/opencode.mjs';
 import { mapEvent } from './lib/agent-events.mjs';
 import { makeGate } from './lib/gate.mjs';
 import { clientIp, makeOriginGuard } from './lib/origin.mjs';
@@ -83,6 +83,7 @@ const store = makeStore(STORE_DIR, { block: s => BLOCK.test(s) });
 const AGENT_WORK = path.join(APPS_DIR, '_agent');
 const VERIFIER_SRC = path.join(ROOT, 'server', 'verify-html.mjs');
 const agentGate = makeGate(1, Number(process.env.DEEP_QUEUE || 8));   // 深轨并发 1 + 队列上限
+const DEEP_TIMEOUT_MS = Number(process.env.DEEP_TIMEOUT_SEC || 150) * 1000; // 硬墙钟超时：挂死的 agent 不能占着唯一坑位堵死慢轨
 
 // 快轨全局并发闸：保护上游测试网关不被打爆（值按上游能承受的并发调）
 const GEN_CONCURRENCY = Number(process.env.GEN_CONCURRENCY || 5);
@@ -451,7 +452,15 @@ async function runAgent(req, res, { q, slug, started, taskText, sessionTitle, pr
         const m = mapEvent(oc, sid);
         if (m && !res.writableEnded) sse(res, m.event, m.data);
       });
-      const r = await sendMessage(sid, AGENT_WORK, { text: taskText });   // 阻塞到回合结束
+      // 阻塞到回合结束；硬墙钟超时兜底——挂死的 agent 会占住唯一深轨坑位堵死所有人
+      const sendP = sendMessage(sid, AGENT_WORK, { text: taskText });
+      sendP.catch(() => {});   // 超时弃赛后底层 reject 不能变成 unhandled rejection
+      let hardTimer;
+      const r = await Promise.race([
+        sendP,
+        new Promise((_, rej) => { hardTimer = setTimeout(() => rej(Object.assign(
+          new Error('智能体运行超时，已中止。请重试，或改用快速生成。'), { userSafe: true, timeout: true })), DEEP_TIMEOUT_MS); }),
+      ]).finally(() => clearTimeout(hardTimer));
       stopEvents?.(); stopEvents = null;
       done = true;
       const html = readAgentHtml();
@@ -459,10 +468,11 @@ async function runAgent(req, res, { q, slug, started, taskText, sessionTitle, pr
       const tokens = r?.info?.tokens ? (r.info.tokens.output || 0) + (r.info.tokens.input || 0) : 0;
       finishGeneration(res, { html, issues, started, totalTokens: tokens, type: 'search', q, slug, mode: 'deep' });
     } catch (e) {
+      logActivity('agent_error', { q: String(q || '').slice(0, 80), msg: String(e?.message || e).slice(0, 100), timeout: !!e?.timeout });
       if (!done && !res.writableEnded) { try { sse(res, 'error', { message: e.userSafe ? e.message : '智能体运行出错，请稍后重试。' }); res.end(); } catch {} }
     } finally {
       stopEvents?.();
-      if (sid) deleteSession(sid, AGENT_WORK);
+      if (sid) deleteSession(sid, AGENT_WORK);   // 超时路径也走这里：删会话即终止 opencode 侧的运行
     }
   });
   } catch (e) {
@@ -715,3 +725,14 @@ function readBody(req, limit = 200000) {
   });
 }
 server.listen(PORT, () => console.log(`现编OS 运行于 http://localhost:${PORT}  模型=${MODEL} 限流=${RATE_PER_HOUR}/h`));
+
+// 启动清扫：进程被杀时 finally 不会执行，opencode 里会留下孤儿会话白吃内存。
+// improv-os 是 AGENT_WORK 目录的唯一客户端，启动瞬间该目录下所有会话必为孤儿，全删。
+(async () => {
+  try {
+    if (!(await ocHealth())) return;
+    const orphans = await listSessions(AGENT_WORK);
+    for (const s of orphans) await deleteSession(s.id, AGENT_WORK);
+    if (orphans.length) console.log(`[agent] 启动清理孤儿会话 ${orphans.length} 个`);
+  } catch {}
+})();

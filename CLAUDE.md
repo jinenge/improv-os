@@ -43,6 +43,7 @@ Spotlight"完整版"（mode=deep）与缓存应用"修改"按钮走真正的 ope
 - **事件直播**：`server/lib/agent-events.mjs` 把工具调用映射成剧场 stage（"正在编辑文件/正在运行验证"）；文本 part 不直播（part.text 是累积全文会刷屏）。
 - **修改应用**：`/api/modify`（POST {slug, instruction}），把现有 index.html 拷进工作目录让 agent 增量编辑，写回缓存。只缓存应用可改（dock 应用每次重生成）。
 - **并发限 1**（`server/lib/gate.mjs`），工作目录单一不冲突。
+- **挂死防护（2026-06-12，事故驱动）**：一个挂死的 agent 曾占住唯一深轨坑位 22 分钟堵死所有人（02:42 的 modify 无 done、无日志、无超时）。三层修复：① 硬墙钟超时 `DEEP_TIMEOUT_SEC`（默认 150s）`Promise.race` 中止（弃赛侧 promise 必须先 `.catch(()=>{})` 防 unhandled rejection），finally 删会话即终止 opencode 侧运行；② agent 错误全部落 `agent_error` 活动事件（含 timeout 标记，控制台「异常」可见）；③ 启动清扫 `listSessions(AGENT_WORK)` 全删——进程被杀时 finally 不执行，孤儿会话白吃内存。
 
 ⚠️ 实测（2026-06-11）：
 - 本机 opencode 1.1.53 / 源站 1.17.3，REST 形态兼容（session.id / message.info.finish / /event 一致）。

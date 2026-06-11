@@ -269,7 +269,7 @@ async function refreshCharts() {
 
 // ---------- 活动流 ----------
 const FILTERS = [['all','全部'],['gen','生成'],['mod','修改/修复'],['cap','能力调用'],['warn','异常/限流'],['visit','访客']];
-const CAT = t => ['gen','done','busy','busy_deep'].includes(t) ? 'gen' : ['modify','repair'].includes(t) ? 'mod' : ['cap_ai','cap_http'].includes(t) ? 'cap' : ['retry429','upstream_error','limited','blocked','origin_block'].includes(t) ? 'warn' : t === 'visit' ? 'visit' : 'gen';
+const CAT = t => ['gen','done','busy','busy_deep'].includes(t) ? 'gen' : ['modify','repair'].includes(t) ? 'mod' : ['cap_ai','cap_http'].includes(t) ? 'cap' : ['retry429','upstream_error','limited','blocked','origin_block','agent_error'].includes(t) ? 'warn' : t === 'visit' ? 'visit' : 'gen';
 let filterOn = 'all';
 function renderFilters() {
   $('#filters').innerHTML = FILTERS.map(([k, t]) => `<button data-f="${k}" class="${k === 'all' ? 'on' : ''}">${t}</button>`).join('');
@@ -299,6 +299,7 @@ function evHtml(e) {
     case 'origin_block': badge = '盗用'; cls = 'b-fail'; txt = `拦下跨站调用 ${esc(e.path)} ${e.origin || e.referer ? '← ' + esc(e.origin || e.referer) : '（裸请求）'}`; break;
     case 'busy': badge = '满载'; cls = 'b-warn'; txt = `快轨排队溢出，拒了「${esc(e.q)}」`; break;
     case 'busy_deep': badge = '满载'; cls = 'b-warn'; txt = `深轨排队溢出，拒了「${esc(e.q)}」`; break;
+    case 'agent_error': badge = '智能体'; cls = 'b-fail'; txt = `${e.timeout ? '超时中止' : '运行出错'}「${esc(e.q)}」${e.msg ? ' — ' + esc(e.msg) : ''}`; break;
     default: badge = e.type; cls = 'b-visit'; txt = JSON.stringify(e).slice(0, 120);
   }
   return `<div class="ev" data-cat="${CAT(e.type)}" ${filterOn !== 'all' && CAT(e.type) !== filterOn ? 'style="display:none"' : ''}><time>${time}</time><span class="badge ${cls}">${badge}</span><span class="txt">${txt}</span>${e.ip ? `<span class="ip">${esc(e.ip)}</span>` : ''}</div>`;
