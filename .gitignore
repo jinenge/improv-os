@@ -1,0 +1,7 @@
+.env
+node_modules/
+apps/
+# 内部运维细节，永不入库
+deploy/INTERNAL.md
+deploy/PUBLIC-LAUNCH.md
+docs/superpowers/

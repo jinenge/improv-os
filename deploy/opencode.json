@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "gateway": {
+      "npm": "@ai-sdk/anthropic",
+      "name": "Anthropic-compatible Gateway",
+      "options": {
+        "baseURL": "https://api.anthropic.com/v1",
+        "apiKey": "{env:ANTHROPIC_AUTH_TOKEN}"
+      },
+      "models": {
+        "claude-sonnet-4-6": { "name": "Claude Sonnet 4.6" }
+      }
+    }
+  },
+  "permission": { "edit": "allow", "bash": "allow", "webfetch": "allow" }
+}

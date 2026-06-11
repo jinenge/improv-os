@@ -1,0 +1,19 @@
+# 现编OS 内网运维控制台（独立进程，重启主服务不影响面板）
+# 安装：sudo cp deploy/improv-admin.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now improv-admin
+# User / 路径 / uid 按你的部署用户调整
+[Unit]
+Description=Improv OS admin console (intranet only)
+After=network.target
+
+[Service]
+Type=simple
+User=app
+WorkingDirectory=/home/app/improv-os
+ExecStart=/usr/bin/node admin/server.mjs
+Restart=always
+RestartSec=2
+# systemctl --user（opencode 控制）需要 user bus，uid 与部署用户一致
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+
+[Install]
+WantedBy=multi-user.target

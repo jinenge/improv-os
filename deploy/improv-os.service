@@ -1,0 +1,18 @@
+# 现编OS 主服务（静态托管 + 生成代理 + 能力桥，单进程零依赖）
+# 安装：sudo cp deploy/improv-os.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now improv-os
+# User / 路径按你的部署用户调整；密钥等配置走仓库根目录 .env（见 .env.example）
+[Unit]
+Description=Improv OS (xianbian os)
+After=network.target
+
+[Service]
+Type=simple
+User=app
+WorkingDirectory=/home/app/improv-os
+ExecStart=/usr/bin/node server/index.mjs
+Restart=always
+RestartSec=3
+Environment=PORT=7100
+
+[Install]
+WantedBy=multi-user.target

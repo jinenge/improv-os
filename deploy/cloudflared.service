@@ -1,0 +1,19 @@
+# 装到源站: /etc/systemd/system/cloudflared.service
+# 前置：cloudflared tunnel login（生成 ~/.cloudflared/cert.pem）→ tunnel create improv-os
+#       → tunnel route dns improv-os <你的域名> → 写 ~/.cloudflared/config.yml
+# User / 路径按你的部署用户调整（下同）
+[Unit]
+Description=cloudflared tunnel for improv-os
+After=network.target
+
+[Service]
+Type=simple
+User=app
+Environment=no_proxy=*
+Environment=NO_PROXY=*
+ExecStart=/usr/local/bin/cloudflared --no-autoupdate --config /home/app/.cloudflared/config.yml tunnel run improv-os
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

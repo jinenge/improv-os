@@ -1,0 +1,17 @@
+[Unit]
+Description=opencode headless server (improv-os slow track)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/improv-os
+EnvironmentFile=%h/improv-os/.env
+Environment=no_proxy=*
+Environment=NO_PROXY=*
+ExecStart=%h/.opencode/bin/opencode serve --port 4096 --hostname 127.0.0.1
+Restart=always
+RestartSec=5
+RuntimeMaxSec=86400
+
+[Install]
+WantedBy=default.target

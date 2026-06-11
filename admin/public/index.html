@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>现编OS 运维控制台</title>
+<style>
+:root{--bg:#0d1117;--panel:#161b22;--line:#30363d;--text:#c9d1d9;--dim:#8b949e;--green:#3fb950;--red:#f85149;--amber:#d29922;--blue:#58a6ff;--purple:#bc8cff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","SF Pro SC",sans-serif;-webkit-font-smoothing:antialiased;padding:18px 22px 40px}
+h1{font-size:16px;font-weight:600}
+h2{font-size:12px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin:0 0 10px}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,monospace}
+header{display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+header .spacer{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:99px;padding:3px 12px;font-size:12px;color:var(--dim)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--dim);flex:none}
+.dot.ok{background:var(--green);box-shadow:0 0 6px rgba(63,185,80,.6)}
+.dot.bad{background:var(--red);box-shadow:0 0 6px rgba(248,81,73,.6)}
+.dot.warn{background:var(--amber)}
+.grid{display:grid;gap:14px}
+.svc-grid{grid-template-columns:repeat(auto-fit,minmax(230px,1fr));margin-bottom:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.svc-head{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.svc-head b{font-size:13px}
+.svc-sub{color:var(--dim);font-size:11px;margin-bottom:10px;min-height:16px}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+button{font:inherit;font-size:12px;background:#21262d;border:1px solid var(--line);color:var(--text);border-radius:6px;padding:3px 10px;cursor:pointer}
+button:hover{background:#30363d}
+button:disabled{opacity:.45;cursor:default}
+button.danger{color:#ffa198;border-color:#6e2c28}
+button.danger:hover{background:#3d1d1b}
+button.go{color:#7ee787;border-color:#2e5639}
+button.go:hover{background:#1b2e22}
+button.primary{background:#238636;border-color:#238636;color:#fff}
+button.primary:hover{background:#2ea043}
+.metrics{grid-template-columns:repeat(auto-fit,minmax(128px,1fr));margin-bottom:14px}
+.metric .v{font-size:21px;font-weight:600;font-family:ui-monospace,"SF Mono",Menlo,monospace;margin-top:2px}
+.metric .v small{font-size:12px;color:var(--dim);font-weight:400}
+.metric .k{color:var(--dim);font-size:11px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:1100px){.cols{grid-template-columns:1fr}}
+canvas{width:100%;height:150px;display:block}
+.legend{display:flex;gap:14px;font-size:11px;color:var(--dim);margin-top:6px}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.feed{height:380px;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.feed::-webkit-scrollbar{width:8px}.feed::-webkit-scrollbar-thumb{background:#30363d;border-radius:4px}
+.ev{display:flex;gap:9px;align-items:baseline;padding:4px 6px;border-radius:5px;font-size:12px}
+.ev:hover{background:#1c2128}
+.ev time{color:#555e68;font-family:ui-monospace,Menlo,monospace;font-size:11px;flex:none}
+.badge{flex:none;font-size:10px;border-radius:4px;padding:1px 7px;font-weight:600;letter-spacing:.02em}
+.b-gen{background:#132f54;color:#79b8ff}.b-deep{background:#2a1d4d;color:var(--purple)}
+.b-ok{background:#12361c;color:#7ee787}.b-fail{background:#4b1815;color:#ffa198}
+.b-warn{background:#3b2c10;color:#e3b341}.b-cap{background:#23163a;color:#c9a6ff}
+.b-visit{background:#21262d;color:var(--dim)}.b-mod{background:#0d3a3f;color:#76e3ea}
+.ev .txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev .ip{color:#555e68;font-size:11px;font-family:ui-monospace,Menlo,monospace;flex:none}
+.filters{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.filters button.on{background:#1f3a5f;border-color:#2f5a8f;color:#9ecbff}
+.conf{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.conf label{display:block;font-size:11px;color:var(--dim);margin-bottom:3px}
+.conf input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);padding:5px 8px;font:inherit;font-family:ui-monospace,Menlo,monospace;outline:none}
+.conf input:focus{border-color:var(--blue)}
+.conf .hint{font-size:10px;color:#555e68;margin-top:2px}
+.conf-foot{display:flex;align-items:center;gap:10px;margin-top:14px}
+.conf-foot .msg{font-size:12px;color:var(--dim)}
+.logtabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.logtabs button.on{background:#1f3a5f;border-color:#2f5a8f;color:#9ecbff}
+pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;font:11px/1.6 ui-monospace,"SF Mono",Menlo,monospace;overflow:auto;max-height:340px;white-space:pre-wrap;word-break:break-all;color:#9da7b1}
+.toast{position:fixed;right:18px;bottom:18px;background:#1c2128;border:1px solid var(--line);border-left:3px solid var(--green);border-radius:8px;padding:10px 16px;font-size:12px;opacity:0;transform:translateY(8px);transition:.25s;pointer-events:none;max-width:380px}
+.toast.show{opacity:1;transform:none}
+.toast.err{border-left-color:var(--red)}
+section{margin-bottom:14px}
+</style>
+</head>
+<body>
+<header>
+  <h1>现编OS 运维控制台</h1>
+  <span class="pill"><span class="dot ok"></span>内网 7101</span>
+  <span class="pill" id="pub-pill"><span class="dot" id="pub-dot"></span><span id="pub-text">公网检测中…</span></span>
+  <div class="spacer"></div>
+  <span class="pill mono" id="sys-pill">—</span>
+  <span class="pill mono" id="clock">—</span>
+</header>
+
+<div class="grid svc-grid" id="svc-grid"></div>
+
+<div class="grid metrics" id="metrics"></div>
+
+<div class="cols">
+  <div class="card">
+    <h2>承载（近 30 分钟）</h2>
+    <canvas id="ch-load"></canvas>
+    <div class="legend"><span><i style="background:#58a6ff"></i>快轨并发</span><span><i style="background:#d29922"></i>快轨排队</span><span><i style="background:#bc8cff"></i>深轨(活+队)</span><span><i style="background:#3fb950"></i>在线访客</span></div>
+  </div>
+  <div class="card">
+    <h2>吞吐（近 30 分钟）</h2>
+    <canvas id="ch-rate"></canvas>
+    <div class="legend"><span><i style="background:#58a6ff"></i>生成 / 分钟</span><span><i style="background:#3fb950"></i>千 token / 分钟</span></div>
+  </div>
+</div>
+
+<section class="card">
+  <h2>实时活动 <span id="feed-live" style="color:var(--green);text-transform:none;letter-spacing:0">● 直播中</span></h2>
+  <div class="filters" id="filters"></div>
+  <div class="feed" id="feed"></div>
+</section>
+
+<div class="cols">
+  <section class="card">
+    <h2>运行参数（写入 .env，重启主服务生效）</h2>
+    <div class="conf" id="conf"></div>
+    <div class="conf-foot">
+      <button class="primary" id="conf-save">保存并重启主服务</button>
+      <button id="conf-save-only">仅保存</button>
+      <span class="msg" id="conf-msg"></span>
+    </div>
+  </section>
+  <section class="card">
+    <h2>服务日志</h2>
+    <div class="logtabs" id="logtabs"></div>
+    <pre id="logbox">点击上方单元加载日志</pre>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(msg, err) {
+  const t = $('#toast'); t.textContent = msg; t.classList.toggle('err', !!err); t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 3500);
+}
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+  return d;
+}
+
+// ---------- 服务卡片 ----------
+const SVCS = [
+  { key: 'improv',      name: '主服务 improv-os',  sub: '生成代理 · :7100',        acts: [['restart-improv','重启'],['stop-improv','停止','danger'],['start-improv','启动','go']] },
+  { key: 'opencode',    name: '智能体 opencode',   sub: '深轨/修改 · :4096',       acts: [['restart-opencode','重启'],['stop-opencode','停止','danger'],['start-opencode','启动','go']] },
+  { key: 'cloudflared', name: '公网隧道',          sub: 'Cloudflare Tunnel',       acts: [['restart-cloudflared','重启'],['stop-cloudflared','下线公网','danger'],['start-cloudflared','上线公网','go']] },
+  { key: 'pub',         name: '公网端到端',        sub: '',                        acts: [] },
+];
+const DANGEROUS = { 'stop-improv': '停止主服务（公网访客将打不开页面）？', 'stop-cloudflared': '下线公网（os.fzhiyu.dev 将不可达，内网不受影响）？', 'stop-opencode': '停止智能体（完整版/修改功能将降级）？' };
+function renderSvcGrid() {
+  $('#svc-grid').innerHTML = SVCS.map(s => `
+    <div class="card">
+      <div class="svc-head"><span class="dot" id="dot-${s.key}"></span><b>${s.name}</b></div>
+      <div class="svc-sub" id="sub-${s.key}">${s.sub}</div>
+      <div class="btns">${s.acts.map(([a, t, cls]) => `<button class="${cls || ''}" data-act="${a}">${t}</button>`).join('')}</div>
+    </div>`).join('');
+  document.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', async () => {
+    const act = b.dataset.act;
+    if (DANGEROUS[act] && !confirm(DANGEROUS[act])) return;
+    b.disabled = true;
+    try { const r = await api('/api/control', { method: 'POST', headers: {'content-type':'application/json'}, body: JSON.stringify({ action: act }) });
+      toast(`${r.label}：完成${r.out ? ' · ' + r.out : ''}`);
+    } catch (e) { toast('操作失败：' + e.message, true); }
+    b.disabled = false;
+    setTimeout(refreshOverview, 1200);
+  }));
+}
+
+// ---------- 指标 ----------
+const METRICS = [
+  ['visitors', '在线访客（5 分钟）'], ['fast', '快轨 并发/排队'], ['deep', '深轨 并发/排队'],
+  ['todayGens', '今日生成'], ['todayTokens', '今日 token'], ['totalGens', '累计生成'],
+  ['totalTokens', '累计 token'], ['apps', '已装应用'],
+];
+function renderMetrics() {
+  $('#metrics').innerHTML = METRICS.map(([k, label]) => `<div class="card metric"><div class="k">${label}</div><div class="v" id="m-${k}">—</div></div>`).join('');
+}
+const fmt = n => n == null ? '—' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e4 ? (n / 1e3).toFixed(1) + 'k' : String(n);
+
+function setDot(id, state) {
+  const el = $('#dot-' + id);
+  if (el) el.className = 'dot ' + (state === 'active' ? 'ok' : state === 'inactive' || state === 'failed' ? 'bad' : 'warn');
+}
+
+async function refreshOverview() {
+  try {
+    const d = await api('/api/overview');
+    setDot('improv', d.svc.improv); setDot('opencode', d.svc.opencode); setDot('cloudflared', d.svc.cloudflared);
+    setDot('pub', d.pub.ok ? 'active' : 'inactive');
+    $('#sub-improv').textContent = `生成代理 · :7100 · ${d.svc.improv}${d.svc.improvSince ? ' · 自 ' + d.svc.improvSince.replace(/^\w+ /, '').slice(0, 16) : ''}`;
+    $('#sub-opencode').textContent = `深轨/修改 · :4096 · ${d.svc.opencode}`;
+    $('#sub-cloudflared').textContent = `Cloudflare Tunnel · ${d.svc.cloudflared}`;
+    $('#sub-pub').textContent = `${d.pub.url.replace('https://','')} · ${d.pub.ok ? '可达 ' + d.pub.ms + 'ms' : '不可达'}`;
+    const pd = $('#pub-dot'); pd.className = 'dot ' + (d.pub.ok ? 'ok' : 'bad');
+    $('#pub-text').textContent = d.pub.ok ? '公网正常' : '公网不可达';
+    if (d.sys) $('#sys-pill').textContent = `load ${d.sys.load[0]} · 内存 ${d.sys.memUsedPct ?? '—'}% · 盘 ${d.sys.diskPct ?? '—'}%`;
+    if (d.live) {
+      $('#m-visitors').textContent = d.live.visitors5m ?? '—';
+      $('#m-fast').innerHTML = `${d.live.fastActive}<small>/${d.live.fastMax}</small> <small>队 ${d.live.fastQueue}</small>`;
+      $('#m-deep').innerHTML = `${d.live.deepActive}<small>/1</small> <small>队 ${d.live.deepQueue}</small>`;
+      $('#m-todayGens').textContent = fmt(d.live.todayGens);
+      $('#m-todayTokens').textContent = fmt(d.live.todayTokens);
+    } else {
+      $('#m-fast').textContent = '主服务离线';
+    }
+    if (d.stats) {
+      $('#m-totalGens').textContent = fmt(d.stats.totalGens);
+      $('#m-totalTokens').textContent = fmt(d.stats.totalTokens);
+      $('#m-apps').textContent = fmt(d.stats.apps);
+    }
+  } catch (e) { $('#pub-text').textContent = '控制台连接中断'; }
+}
+
+// ---------- 曲线 ----------
+function drawChart(canvas, datasets, opts = {}) {
+  const dpr = devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w) return;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+  const all = datasets.flatMap(d => d.data).filter(v => v != null);
+  const max = Math.max(opts.minMax || 1, ...all) * 1.15;
+  // 网格
+  ctx.strokeStyle = '#21262d'; ctx.lineWidth = 1; ctx.fillStyle = '#555e68'; ctx.font = '10px ui-monospace,Menlo';
+  for (let i = 0; i <= 3; i++) {
+    const y = h - 14 - (h - 22) * i / 3;
+    ctx.beginPath(); ctx.moveTo(26, y); ctx.lineTo(w, y); ctx.stroke();
+    ctx.fillText(fmtAxis(max * i / 3), 0, y + 3);
+  }
+  const n = Math.max(...datasets.map(d => d.data.length), 2);
+  for (const ds of datasets) {
+    ctx.strokeStyle = ds.color; ctx.lineWidth = 1.6; ctx.beginPath();
+    let started = false;
+    ds.data.forEach((v, i) => {
+      if (v == null) return;
+      const x = 26 + (w - 30) * i / (n - 1);
+      const y = h - 14 - (h - 22) * Math.min(v, max) / max;
+      started ? ctx.lineTo(x, y) : ctx.moveTo(x, y); started = true;
+    });
+    ctx.stroke();
+  }
+}
+const fmtAxis = v => v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1) + 'k' : v >= 10 ? Math.round(v) : +v.toFixed(1);
+
+async function refreshCharts() {
+  try {
+    const { series } = await api('/api/series');
+    const pts = series.slice(-360);                       // 近 30 分钟
+    drawChart($('#ch-load'), [
+      { color: '#58a6ff', data: pts.map(p => p.fastActive ?? null) },
+      { color: '#d29922', data: pts.map(p => p.fastQueue ?? null) },
+      { color: '#bc8cff', data: pts.map(p => p.deepActive != null ? p.deepActive + (p.deepQueue || 0) : null) },
+      { color: '#3fb950', data: pts.map(p => p.visitors5m ?? null) },
+    ], { minMax: 4 });
+    // 速率：相邻样本差 → 每分钟
+    const gensRate = [], tokRate = [];
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i], dt = (b.t - a.t) / 60000;
+      gensRate.push(a.totalGens != null && b.totalGens != null && dt > 0 ? Math.max(0, (b.totalGens - a.totalGens) / dt) : null);
+      tokRate.push(a.totalTokens != null && b.totalTokens != null && dt > 0 ? Math.max(0, (b.totalTokens - a.totalTokens) / dt / 1000) : null);
+    }
+    drawChart($('#ch-rate'), [
+      { color: '#58a6ff', data: gensRate },
+      { color: '#3fb950', data: tokRate },
+    ], { minMax: 2 });
+  } catch {}
+}
+
+// ---------- 活动流 ----------
+const FILTERS = [['all','全部'],['gen','生成'],['mod','修改/修复'],['cap','能力调用'],['warn','异常/限流'],['visit','访客']];
+const CAT = t => ['gen','done','busy','busy_deep'].includes(t) ? 'gen' : ['modify','repair'].includes(t) ? 'mod' : ['cap_ai','cap_http'].includes(t) ? 'cap' : ['retry429','upstream_error','limited','blocked','origin_block'].includes(t) ? 'warn' : t === 'visit' ? 'visit' : 'gen';
+let filterOn = 'all';
+function renderFilters() {
+  $('#filters').innerHTML = FILTERS.map(([k, t]) => `<button data-f="${k}" class="${k === 'all' ? 'on' : ''}">${t}</button>`).join('');
+  document.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => {
+    filterOn = b.dataset.f;
+    document.querySelectorAll('[data-f]').forEach(x => x.classList.toggle('on', x === b));
+    document.querySelectorAll('.ev').forEach(ev => ev.style.display = (filterOn === 'all' || ev.dataset.cat === filterOn) ? '' : 'none');
+  }));
+}
+function evHtml(e) {
+  const time = new Date(e.t).toTimeString().slice(0, 8);
+  let badge = '', cls = '', txt = '';
+  switch (e.type) {
+    case 'visit': badge = '访客'; cls = 'b-visit'; txt = `打开桌面 · ${esc((e.ua || '').split(')')[0].split('(').pop() || '')}`; break;
+    case 'gen': badge = e.mode === 'deep' ? '深轨' : '快轨'; cls = e.mode === 'deep' ? 'b-deep' : 'b-gen';
+      txt = `${e.kind === 'browser' ? '浏览' : '生成'}「${esc(e.q)}」`; break;
+    case 'done': badge = e.ok ? '完成' : '失败'; cls = e.ok ? 'b-ok' : 'b-fail';
+      txt = `「${esc(e.q)}」 ${e.mode} · ${e.secs}s · ${fmt(e.tokens)} tok`; break;
+    case 'modify': badge = '修改'; cls = 'b-mod'; txt = `「${esc(e.instruction)}」 → ${e.slug}`; break;
+    case 'repair': badge = '修复'; cls = 'b-mod'; txt = `「${esc(e.q)}」 ${esc(e.error || '')}`; break;
+    case 'cap_ai': badge = 'AI'; cls = 'b-cap'; txt = `应用「${esc(e.appName)}」调用内嵌 AI`; break;
+    case 'cap_http': badge = 'HTTP'; cls = 'b-cap'; txt = `应用拉取 ${esc(e.host)}`; break;
+    case 'retry429': badge = '限速'; cls = 'b-warn'; txt = `上游 429，第 ${e.attempt} 次退避重试（${e.backoff}ms）`; break;
+    case 'upstream_error': badge = '上游错'; cls = 'b-fail'; txt = `HTTP ${e.status}（重试 ${e.retries} 次后放弃）`; break;
+    case 'limited': badge = '限流'; cls = 'b-warn'; txt = `${e.reason === 'ip' ? '单 IP 超额' : e.reason === 'daily' ? '日次数熔断' : 'token 熔断'}${e.q ? ' · 「' + esc(e.q) + '」' : ''}`; break;
+    case 'blocked': badge = '拦截'; cls = 'b-fail'; txt = `内容审查拦下「${esc(e.q)}」`; break;
+    case 'origin_block': badge = '盗用'; cls = 'b-fail'; txt = `拦下跨站调用 ${esc(e.path)} ${e.origin || e.referer ? '← ' + esc(e.origin || e.referer) : '（裸请求）'}`; break;
+    case 'busy': badge = '满载'; cls = 'b-warn'; txt = `快轨排队溢出，拒了「${esc(e.q)}」`; break;
+    case 'busy_deep': badge = '满载'; cls = 'b-warn'; txt = `深轨排队溢出，拒了「${esc(e.q)}」`; break;
+    default: badge = e.type; cls = 'b-visit'; txt = JSON.stringify(e).slice(0, 120);
+  }
+  return `<div class="ev" data-cat="${CAT(e.type)}" ${filterOn !== 'all' && CAT(e.type) !== filterOn ? 'style="display:none"' : ''}><time>${time}</time><span class="badge ${cls}">${badge}</span><span class="txt">${txt}</span>${e.ip ? `<span class="ip">${esc(e.ip)}</span>` : ''}</div>`;
+}
+function appendEvents(events, scroll = true) {
+  const feed = $('#feed');
+  const atBottom = feed.scrollTop + feed.clientHeight >= feed.scrollHeight - 60;
+  feed.insertAdjacentHTML('beforeend', events.map(evHtml).join(''));
+  while (feed.children.length > 600) feed.removeChild(feed.firstChild);
+  if (scroll && atBottom) feed.scrollTop = feed.scrollHeight;
+}
+async function initFeed() {
+  try { const { events } = await api('/api/activity?n=200'); appendEvents(events); $('#feed').scrollTop = $('#feed').scrollHeight; } catch {}
+  const es = new EventSource('/api/activity/stream');
+  es.onmessage = m => { try { appendEvents([JSON.parse(m.data)]); } catch {} };
+  es.onerror = () => { $('#feed-live').textContent = '● 重连中'; $('#feed-live').style.color = 'var(--amber)'; };
+  es.onopen = () => { $('#feed-live').textContent = '● 直播中'; $('#feed-live').style.color = 'var(--green)'; };
+}
+
+// ---------- 参数 ----------
+async function initConf() {
+  const { keys } = await api('/api/env');
+  $('#conf').innerHTML = Object.entries(keys).map(([k, m]) => `
+    <div><label>${m.label} <span class="mono" style="color:#555e68">${k}</span></label>
+    <input type="number" id="conf-${k}" value="${m.value}" min="${m.min}" max="${m.max}">
+    <div class="hint">${m.hint}</div></div>`).join('');
+}
+async function saveConf(restart) {
+  const values = {};
+  document.querySelectorAll('[id^="conf-"]').forEach(i => { if (i.tagName === 'INPUT') values[i.id.slice(5)] = i.value; });
+  $('#conf-msg').textContent = '应用中…';
+  try {
+    const r = await api('/api/config', { method: 'POST', headers: {'content-type':'application/json'}, body: JSON.stringify({ values, restart }) });
+    $('#conf-msg').textContent = restart ? (r.restarted ? '已保存并重启 ✓' : '已保存，但重启失败') : '已保存（重启主服务后生效）';
+    toast(restart ? '参数已生效（主服务已重启）' : '参数已写入 .env');
+  } catch (e) { $('#conf-msg').textContent = ''; toast('保存失败：' + e.message, true); }
+}
+$('#conf-save').addEventListener('click', () => { if (confirm('保存参数并重启主服务？（正在生成中的请求会被打断）')) saveConf(true); });
+$('#conf-save-only').addEventListener('click', () => saveConf(false));
+
+// ---------- 日志 ----------
+const LOG_UNITS = [['improv-os','主服务'],['opencode','智能体'],['cloudflared','隧道'],['health','健康兜底'],['admin','控制台']];
+function renderLogTabs() {
+  $('#logtabs').innerHTML = LOG_UNITS.map(([k, t]) => `<button data-log="${k}">${t}</button>`).join('') + '<button id="log-refresh" title="刷新当前">↻</button>';
+  let cur = null;
+  async function load(unit) {
+    cur = unit;
+    document.querySelectorAll('[data-log]').forEach(x => x.classList.toggle('on', x.dataset.log === unit));
+    $('#logbox').textContent = '加载中…';
+    try { const r = await api(`/api/logs?unit=${unit}&n=120`); $('#logbox').textContent = r.text; $('#logbox').scrollTop = $('#logbox').scrollHeight; }
+    catch (e) { $('#logbox').textContent = '加载失败：' + e.message; }
+  }
+  document.querySelectorAll('[data-log]').forEach(b => b.addEventListener('click', () => load(b.dataset.log)));
+  $('#log-refresh').addEventListener('click', () => cur && load(cur));
+}
+
+// ---------- 时钟 / 启动 ----------
+setInterval(() => { $('#clock').textContent = new Date().toLocaleTimeString('zh-CN', { hour12: false }); }, 1000);
+renderSvcGrid(); renderMetrics(); renderFilters(); renderLogTabs();
+refreshOverview(); setInterval(refreshOverview, 5000);
+refreshCharts(); setInterval(refreshCharts, 15000);
+initFeed(); initConf();
+addEventListener('resize', refreshCharts);
+</script>
+</body>
+</html>
