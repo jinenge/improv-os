@@ -61,12 +61,14 @@ export function openBrowser(initial = '') {
     finally { inst.navigating = false; }
   }
   inst.navigate = navigate;
-  // 套娃跳转的来路上下文：当前页 URL + <title> ——下一页生成时保持同站连贯
+  // 套娃跳转的来路上下文：当前页 URL + <title> + 样式开头——下一页生成时保持同站连贯（含配色字体）
   inst.fromCtx = linkText => {
     const cur = inst.history[inst.idx];
     if (!cur) return null;
-    const title = (inst.cache.get(cur) || '').match(/<title>([^<]{1,80})/)?.[1] || '';
-    return { from: cur.slice(0, 200), fromTitle: title.trim(), link: String(linkText || '').slice(0, 60) };
+    const html = inst.cache.get(cur) || '';
+    const title = html.match(/<title>([^<]{1,80})/)?.[1] || '';
+    const style = (html.match(/<style[^>]*>([\s\S]{1,600})/)?.[1] || '').replace(/\s+/g, ' ').trim();
+    return { from: cur.slice(0, 200), fromTitle: title.trim(), link: String(linkText || '').slice(0, 60), style };
   };
 
   input.addEventListener('keydown', e => {

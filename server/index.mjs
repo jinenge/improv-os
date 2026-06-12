@@ -206,7 +206,8 @@ function buildUserPrompt(type, q, ctx) {
     if (ctx && ctx.from) {
       const fromName = escapeForPrompt(ctx.fromTitle || ctx.from);
       trail = `\n来路：用户正在浏览「${fromName}」(${escapeForPrompt(ctx.from)})${ctx.link ? `，点击了「${escapeForPrompt(ctx.link)}」` : ''}跳转而来。` +
-        `\n若目标与来路同属一个站点：保持同站连贯——相同的站名、配色、页头导航与页脚，内容与来路页面承接呼应（点的是哪条就讲哪条），绝不自相矛盾；若是不同站点：全新设计，不受来路影响。`;
+        `\n若目标与来路同属一个站点：保持同站连贯——相同的站名、配色、页头导航与页脚，内容与来路页面承接呼应（点的是哪条就讲哪条），绝不自相矛盾；若是不同站点：全新设计，不受来路影响。` +
+        (ctx.style ? `\n来路页面的样式开头如下（同站时延续其中的配色、字体与圆角体系）：\n${escapeForPrompt(ctx.style)}` : '');
     }
     return `用户访问：${s}${trail}\n渲染这个网页。`;
   }
@@ -638,7 +639,8 @@ const server = http.createServer((req, res) => {
       const from = (u.searchParams.get('from') || '').slice(0, 200).trim();
       const fromTitle = (u.searchParams.get('fromTitle') || '').slice(0, 80).trim();
       const link = (u.searchParams.get('link') || '').slice(0, 60).trim();
-      if (from && !BLOCK.test(from + fromTitle + link)) ctx = { from, fromTitle, link };
+      const style = (u.searchParams.get('style') || '').slice(0, 650).trim();
+      if (from && !BLOCK.test(from + fromTitle + link + style)) ctx = { from, fromTitle, link, style };
     }
     const deep = mode === 'deep' && type === 'search';
     logActivity('gen', { mode: deep ? 'deep' : 'fast', kind: type, q: q.slice(0, 80), ip, ...(lan && { lan: 1 }) });

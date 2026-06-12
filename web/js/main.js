@@ -3,7 +3,7 @@ import './bridge.js'; // 激活能力桥的全局 message 监听
 import { initSignal } from './signal.js';
 import { DOCK_APPS, TRASH, launchApp } from './apps.js';
 import { initSpotlight, toggle as toggleSpotlight } from './spotlight.js';
-import { createWindow, focusedWindow } from './wm.js';
+import { createWindow, focusedWindow, macAlert } from './wm.js';
 import { setMuted, isMuted } from './theater.js';
 import { UI } from './icons.js';
 
@@ -189,7 +189,10 @@ async function openDeepLink() {
   try {
     const { apps } = await (await fetch('/api/apps')).json();
     const meta = apps.find(a => a.slug === slug);
-    if (!meta) return;
+    if (!meta) {   // 死链兜底：应用已被清掉时不再静默，把失望转化为一次新的现编
+      macAlert({ title: '无法打开此应用', message: '它已被卸载（或从未存在过）。按 ⌘K 现编一个新的吧——反正这台电脑上所有应用都是现做的。' });
+      return;
+    }
     const m = await import('./apps.js');
     m.openSearchApp({ name: meta.name, slug, cached: true, meta });
   } catch {}
