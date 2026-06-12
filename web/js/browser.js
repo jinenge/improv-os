@@ -62,7 +62,10 @@ export function openBrowser(initial = '') {
   }
   inst.navigate = navigate;
 
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') navigate(input.value); });
+  input.addEventListener('keydown', e => {
+    if (e.isComposing || e.keyCode === 229) return;   // 输入法选词的回车不触发导航
+    if (e.key === 'Enter') navigate(input.value);
+  });
   backBtn.addEventListener('click', () => { if (inst.idx > 0) { inst.idx--; navigate(inst.history[inst.idx], { push: false }); } });
   fwdBtn.addEventListener('click', () => { if (inst.idx < inst.history.length - 1) { inst.idx++; navigate(inst.history[inst.idx], { push: false }); } });
   tb.querySelector('.sf-reload').addEventListener('click', () => { const u = inst.history[inst.idx]; if (u) { inst.cache.delete(u); navigate(u, { push: false, force: true }); } });

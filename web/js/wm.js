@@ -181,6 +181,7 @@ export function macSheet({ win, title, message, placeholder = '', confirmText = 
     ov.querySelector('.sheet-cancel').addEventListener('click', () => close(null));
     okBtn.addEventListener('click', submit);
     ta.addEventListener('keydown', e => {
+      if (e.isComposing || e.keyCode === 229) return;   // 输入法选词中的 Esc 只收候选框，不关对话框
       if (e.key === 'Escape') { e.preventDefault(); close(null); }
       else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); submit(); }
     });

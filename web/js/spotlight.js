@@ -22,6 +22,7 @@ export function initSpotlight() {
   overlay.addEventListener('pointerdown', e => { if (e.target === overlay) hide(); });
   input.addEventListener('input', () => { clearTimeout(debounce); debounce = setTimeout(search, 120); });
   input.addEventListener('keydown', e => {
+    if (e.isComposing || e.keyCode === 229) return;   // 输入法选词中：回车/方向键/Esc 都归输入法，不触发搜索
     if (e.key === 'Escape') hide();
     else if (e.key === 'ArrowDown') { e.preventDefault(); select(selected + 1); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); select(selected - 1); }
