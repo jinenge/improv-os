@@ -40,6 +40,12 @@ export function openSearchApp({ name, slug, cached, mode = 'fast', meta }) {
   const win = createWindow({ title: name, width: 800, height: 560 });
   win.addAction(UI.wand, '修改此应用', () => promptModify(win, name, slug));
   win.addAction(UI.refresh, '重新生成', () => regen(win, 'search', name, slug, slug));
+  win.addAction(UI.share, '复制分享链接', () => {
+    const link = `${location.origin}/?app=${slug}`;
+    navigator.clipboard?.writeText(link)
+      .then(() => win.setStatus('链接已复制——朋友点开直接运行这个应用'))
+      .catch(() => win.setStatus(link));   // 剪贴板不可用时直接亮出链接
+  });
   if (cached) {
     mountCachedApp(win, slug);
     if (meta?.updatedAt) {

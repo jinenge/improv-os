@@ -739,9 +739,24 @@ const server = http.createServer((req, res) => {
   let p = u.pathname === '/' ? '/index.html' : u.pathname;
   const fp = path.join(WEB_DIR, path.normalize(p).replace(/^(\.\.[/\\])+/, ''));
   if (fp.startsWith(WEB_DIR) && fs.existsSync(fp) && fs.statSync(fp).isFile()) {
+    let body = fs.readFileSync(fp);
+    // 分享深链 OG 卡片：/?app=<slug> 时把 og:title/描述/标题换成该应用——
+    // 微信/QQ/X 爬虫只看 HTML，链接展开的第一眼就是「有人现编了什么」
+    const dlSlug = p === '/index.html' ? u.searchParams.get('app') : null;
+    if (dlSlug && /^[a-f0-9]{12}$/.test(dlSlug)) {
+      try {
+        const meta = JSON.parse(fs.readFileSync(path.join(APPS_DIR, dlSlug, 'meta.json'), 'utf8'));
+        const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        body = body.toString()
+          .replace(/<title>[^<]*<\/title>/, `<title>${esc(meta.name)} — 现编OS</title>`)
+          .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${esc(`有人在现编OS上安装了「${meta.name}」`)}$2`)
+          .replace(/(<meta property="og:description" content=")[^"]*(")/, '$1点开链接直接运行它——这台电脑上所有应用都是 AI 当场现编的。$2');
+        logActivity('deeplink', { slug: dlSlug, q: String(meta.name).slice(0, 80), ip });
+      } catch {}
+    }
     // no-cache：持续迭代项目，确保老访客也能拿到最新前端（文件小，每次校验代价可忽略）
     res.writeHead(200, { 'content-type': MIME[path.extname(fp)] || 'application/octet-stream', 'cache-control': 'no-cache' });
-    return res.end(fs.readFileSync(fp));
+    return res.end(body);
   }
   json(res, 404, { error: 'not found' });
 });

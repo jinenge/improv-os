@@ -21,6 +21,7 @@ const bootTimer = setInterval(() => {
       document.getElementById('desktop').hidden = false;
       setTimeout(() => boot.remove(), 600);
       setTimeout(firstRunNotice, 1200);
+      setTimeout(openDeepLink, 700);   // 分享链接 ?app=<slug>：开机后直接弹出对应应用
     }, 250);
   }
 }, 180);
@@ -179,6 +180,19 @@ function readmeWindow() {
       </ul>
       <p class="readme-dim">系统资源有限，每小时可安装的应用数量有上限。<br>关于本机 &gt; 可查看系统真实配置。<br>整机开源：<a class="src-link" href="https://github.com/Fzhiyu1/improv-os" target="_blank" rel="noopener">github.com/Fzhiyu1/improv-os</a></p>
     </div>`;
+}
+
+// ---------- 分享深链：?app=<slug> 直接打开对应缓存应用 ----------
+async function openDeepLink() {
+  const slug = new URLSearchParams(location.search).get('app');
+  if (!slug || !/^[a-f0-9]{12}$/.test(slug)) return;
+  try {
+    const { apps } = await (await fetch('/api/apps')).json();
+    const meta = apps.find(a => a.slug === slug);
+    if (!meta) return;
+    const m = await import('./apps.js');
+    m.openSearchApp({ name: meta.name, slug, cached: true, meta });
+  } catch {}
 }
 
 // ---------- 首次访问通知 ----------
