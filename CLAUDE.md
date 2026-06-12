@@ -73,6 +73,16 @@ Spotlight"完整版"（mode=deep）与缓存应用"修改"按钮走真正的 ope
 - 已实证：裸/evil Origin→403、本站 Referer→200、真实浏览器同源 fetch（generate/cap）全 200 零误杀。可经 `.env ALLOWED_ORIGINS` 加白名单。
 - ⚠️ 非绝对防御：决心盗用的脚本可伪造 `Referer: os.fzhiyu.dev` 头绕过——彻底防御需 Cloudflare Access 全站门禁（会改变"发给大家玩"的玩法，未启用）。当前定位：挡顺手盗用 + 修限流绕过，token 无限故损害本就有限。
 
+### 内外网分治（2026-06-12）
+
+公网上线后内网同事的可用性也要保证：**限制外网、放开内网**。
+- **判定**（`origin.mjs isLan`）：流量只有两条进路——cloudflared 隧道（必带边缘写入不可伪造的 `cf-connecting-ip`）或内网直连源站端口，故「socket 是私网/回环 且 无 cf 头」⇒ 内网。内网者伪造 cf 头只会自降为公网待遇，无提权方向。
+- **内网放开**：免同源守卫（此前内网直连 `http://<内网IP>:7100` 因 Referer 是内网 IP 不在白名单，生成接口 403——本次顺带修复）、免每小时/每日/token 全部限流、免能力桥三限流。
+- **内网保底并发**：独立 `lanGate`（`LAN_GEN_CONCURRENCY` 默认 3，队列 16），公网把 genGate 打满也挤不掉内网。上游总并发上限 = GEN + LAN_GEN。慢轨因单工作目录物理限制仍共享 1 并发。
+- **不放开的**：内容黑名单内外网一视同仁。
+- 观测：`/api/stats`、`/api/live` 带 `lanActive/lanMax`；活动日志 gen/repair 事件带 `lan:1` 标记。
+- e2e：`tests/lan.e2e.test.mjs`（内网裸请求放行走 lanGate + 断开释放 + 公网裸请求仍 403）。⚠️ 写本地 e2e 时注意：127.0.0.1 会被判内网，要测公网行为需伪造 cf 头（slot-leak 测试已钉）。
+
 ## 手机轻量适配（2026-06-12，方案 A）
 
 手机访问从"全屏劝退页"改为正常进入。纯 CSS（`@media max-width:760px`）+ viewport 禁缩放，无 JS 改动（窗口尺寸用 `!important` 盖掉 wm.js 内联值）：

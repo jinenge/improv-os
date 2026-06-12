@@ -14,6 +14,20 @@ export function clientIp(req) {
   return String((req && req.socket && req.socket.remoteAddress) || '?');
 }
 
+// 内网直连判定：流量只有两条路进来——cloudflared 隧道（必带 cf-connecting-ip，边缘写入、客户端不可伪造）
+// 或内网直连源站端口（源站不对公网暴露）。故「socket 是私网/回环地址 且 无 cf 头」⇒ 内网。
+// 内网者伪造 cf 头只会把自己降级成公网待遇（限流更严），无提权方向，安全。
+const PRIV4 = /^(10\.|127\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.)/;
+export function isLan(req) {
+  if ((req && req.headers || {})['cf-connecting-ip']) return false;
+  let a = String((req && req.socket && req.socket.remoteAddress) || '');
+  if (a.startsWith('::ffff:')) a = a.slice(7);
+  if (a === '::1') return true;
+  if (PRIV4.test(a)) return true;
+  if (/^(fc|fd|fe80)/i.test(a)) return true;
+  return false;
+}
+
 function hostnameOf(v) { try { return new URL(v).hostname; } catch { return null; } }
 
 // 返回 (req) => boolean。规则：

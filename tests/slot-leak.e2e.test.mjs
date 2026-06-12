@@ -59,7 +59,8 @@ function generateThenDrop(q) {
     const req = http.get({
       port: APP_PORT,
       path: `/api/generate?type=dock&q=${encodeURIComponent(q)}`,
-      headers: { referer: `http://127.0.0.1:${APP_PORT}/` },   // 过同源守卫
+      // cf 头把本测试钉成「公网访客」（否则 127.0.0.1 会被 isLan 判成内网走 lanGate，公网泄漏断言失效）
+      headers: { referer: `http://127.0.0.1:${APP_PORT}/`, 'cf-connecting-ip': '203.0.113.7' },
     }, r => {
       if (r.statusCode !== 200) return reject(new Error(`HTTP ${r.statusCode}`));
       r.once('data', () => setTimeout(() => { req.destroy(); resolve(); }, 120));

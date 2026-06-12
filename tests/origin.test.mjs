@@ -57,3 +57,29 @@ test('ALLOWED_ORIGINS 扩展生效', () => {
   const g = makeOriginGuard(['demo.example.com']);
   assert.strictEqual(g({ headers: { origin: 'https://demo.example.com' } }), true);
 });
+
+// ===== isLan：内网直连判定（限制外网、放开内网的依据）=====
+import { isLan } from '../server/lib/origin.mjs';
+
+test('isLan: 私网地址直连 → 内网（10/172.16-31/192.168/链路本地）', () => {
+  for (const a of ['10.60.0.7', '172.16.0.1', '172.31.255.1', '192.168.1.5', '169.254.0.3'])
+    assert.strictEqual(isLan({ headers: {}, socket: { remoteAddress: a } }), true, a);
+});
+
+test('isLan: 回环与 IPv6 映射私网 → 内网', () => {
+  for (const a of ['127.0.0.1', '::1', '::ffff:10.0.80.2', '::ffff:127.0.0.1', 'fd00::1', 'fe80::abcd'])
+    assert.strictEqual(isLan({ headers: {}, socket: { remoteAddress: a } }), true, a);
+});
+
+test('isLan: 带 cf-connecting-ip 一律算公网（即使 socket 是回环——cloudflared 本机回连）', () => {
+  assert.strictEqual(isLan({ headers: { 'cf-connecting-ip': '1.2.3.4' }, socket: { remoteAddress: '127.0.0.1' } }), false);
+});
+
+test('isLan: 公网 socket 地址 → 公网；172.32 不是私网', () => {
+  for (const a of ['8.8.8.8', '203.0.113.9', '172.32.0.1', '2001:db8::1'])
+    assert.strictEqual(isLan({ headers: {}, socket: { remoteAddress: a } }), false, a);
+});
+
+test('isLan: 内网者伪造 cf 头只会降级成公网待遇（无提权方向）', () => {
+  assert.strictEqual(isLan({ headers: { 'cf-connecting-ip': '10.0.0.9' }, socket: { remoteAddress: '10.0.0.9' } }), false);
+});
