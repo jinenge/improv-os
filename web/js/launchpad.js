@@ -114,6 +114,8 @@ async function refresh(win) {
   render(win, state);
 }
 
+const isLiked = slug => { try { return localStorage.getItem('liked:' + slug) === '1'; } catch { return false; } };
+
 function render(win, state) {
   const grid = win.body.querySelector('.lp-grid');
   const empty = win.body.querySelector('.lp-empty');
@@ -121,28 +123,51 @@ function render(win, state) {
   if (state.cat === '最受欢迎') list = state.apps.filter(a => (a.likes || 0) > 0).sort((x, y) => (y.likes || 0) - (x.likes || 0));
   else if (state.cat !== '全部') list = list.filter(a => catOf(a.name) === state.cat);
   if (state.q) list = list.filter(a => a.name.toLowerCase().includes(state.q));
-  grid.innerHTML = list.map((a, i) => {
-    const meta = [
-      (a.opens ? `<span class="lp-m">${UI.eye}${a.opens}</span>` : ''),
-      (a.likes ? `<span class="lp-m lp-m-like">${UI.heart}${a.likes}</span>` : ''),
-    ].join('');
-    return `
-    <button class="lp-app" data-i="${i}" title="打开 ${a.opens || 0} 次 · ${a.likes || 0} 赞 · ${timeAgo(a.updatedAt || a.createdAt)}">
+  // lp-app 用 div（内嵌可点击的爱心，button 不能嵌交互元素）；浏览量只读、爱心可点且始终显示
+  grid.innerHTML = list.map((a, i) => `
+    <div class="lp-app" data-i="${i}" role="button" tabindex="0" title="${a.opens || 0} 次浏览 · ${a.likes || 0} 赞 · ${timeAgo(a.updatedAt || a.createdAt)}">
       <span class="lp-icon">${a.icon ? `<img src="/api/icon?slug=${a.slug}" alt="" loading="lazy">` : launchpadIcon(a.name)}</span>
       <span class="lp-name">${esc(a.name)}</span>
-      ${meta ? `<span class="lp-meta">${meta}</span>` : ''}
-    </button>`;
-  }).join('');
-  grid.querySelectorAll('.lp-app').forEach(b => b.addEventListener('click', () => {
-    const a = list[Number(b.dataset.i)];
-    openSearchApp({ name: a.name, slug: a.slug, cached: true, meta: a });
-  }));
+      <span class="lp-meta">
+        <span class="lp-m lp-views">${UI.eye}${a.opens || 0}</span>
+        <span class="lp-like${isLiked(a.slug) ? ' liked' : ''}" data-slug="${a.slug}" role="button" title="点赞">${UI.heart}<span class="lp-like-n">${a.likes || 0}</span></span>
+      </span>
+    </div>`).join('');
+  // 事件委托：点爱心 = 点赞（不打开应用）；点卡片其他位置 = 打开
+  grid.onclick = e => {
+    const likeEl = e.target.closest('.lp-like');
+    if (likeEl) { e.stopPropagation(); toggleCardLike(likeEl, state); return; }
+    const card = e.target.closest('.lp-app');
+    if (card) { const a = list[Number(card.dataset.i)]; openSearchApp({ name: a.name, slug: a.slug, cached: true, meta: a }); }
+  };
+  grid.onkeydown = e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const card = e.target.closest('.lp-app');
+    if (card) { e.preventDefault(); const a = list[Number(card.dataset.i)]; openSearchApp({ name: a.name, slug: a.slug, cached: true, meta: a }); }
+  };
   if (!state.apps.length) {
     empty.hidden = false;
     empty.innerHTML = `尚未安装任何应用。<br>${SPOT_HINT} 搜索想要的应用，安装后会出现在这里。`;
   } else if (!list.length) {
     empty.hidden = false;
-    empty.textContent = state.cat === '最受欢迎' ? '还没有人点赞。打开应用点个赞，热门榜就出现了。' : '没有匹配的应用。';
+    empty.textContent = state.cat === '最受欢迎' ? '还没有人点赞。给喜欢的应用点个赞，热门榜就出现了。' : '没有匹配的应用。';
   } else empty.hidden = true;
   win.setStatus?.(`${state.apps.length} 个应用`);
+}
+
+// 启动台卡片点赞：乐观更新该卡片 + localStorage 软防重复，服务端权威值修正；不立即重排（避免卡片跳动）
+async function toggleCardLike(likeEl, state) {
+  const slug = likeEl.dataset.slug;
+  const next = !likeEl.classList.contains('liked');
+  const app = state.apps.find(a => a.slug === slug);
+  likeEl.classList.toggle('liked', next);
+  if (app) app.likes = Math.max(0, (app.likes || 0) + (next ? 1 : -1));
+  const nEl = likeEl.querySelector('.lp-like-n');
+  if (nEl && app) nEl.textContent = app.likes;
+  try { localStorage.setItem('liked:' + slug, next ? '1' : '0'); } catch {}
+  try {
+    const r = await fetch('/api/like', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ slug, op: next ? 'like' : 'unlike' }) });
+    const d = await r.json();
+    if (typeof d.likes === 'number') { if (app) app.likes = d.likes; if (nEl) nEl.textContent = d.likes; }
+  } catch {}
 }

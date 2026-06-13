@@ -525,9 +525,13 @@ body.shutdown #desktop, body.shutdown #menubar { animation: shutdown 1.6s forwar
   overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   line-height: 1.25; word-break: break-all;
 }
-/* 卡片角标：浏览量 / 赞数 */
-.lp-meta { display: flex; align-items: center; gap: 8px; margin-top: 1px; font-size: 10.5px; color: #98989d; }
-.lp-m { display: inline-flex; align-items: center; gap: 2px; }
-.lp-m svg { width: 11px; height: 11px; }
-.lp-m-like { color: #ff6b6b; }
+/* 卡片角标：浏览量(只读) / 赞数(可点击) */
+.lp-meta { display: flex; align-items: center; gap: 6px; margin-top: 1px; font-size: 10.5px; color: #98989d; }
+.lp-m, .lp-like { display: inline-flex; align-items: center; gap: 2px; }
+.lp-m svg, .lp-like svg { width: 11px; height: 11px; }
+.lp-views { color: #98989d; }
+.lp-like { cursor: pointer; color: #98989d; padding: 1px 4px; border-radius: 6px; transition: background .12s, color .12s, transform .1s; }
+.lp-like:hover { background: rgba(255,59,48,.12); color: #ff6b6b; }
+.lp-like:active { transform: scale(.86); }
+.lp-like.liked { color: #ff3b30; }
 .lp-empty { text-align: center; color: #86868b; font-size: 13px; padding: 60px 20px; line-height: 2; }
