@@ -187,6 +187,11 @@ body.shutdown #desktop, body.shutdown #menubar { animation: shutdown 1.6s forwar
 }
 .win-action:hover { background: rgba(0, 0, 0, 0.07); }
 .win-action svg { width: 13px; height: 13px; }
+/* 点赞按钮：图标 + 赞数并排，自适应宽度；赞过变红 */
+.win-action.like-btn { width: auto; min-width: 22px; gap: 3px; padding: 0 5px; }
+.win-action.like-btn .like-n { font-size: 11px; line-height: 1; color: #98989d; }
+.win-action.like-btn.liked { color: #ff3b30; }
+.win-action.like-btn.liked .like-n { color: #ff3b30; }
 .win-body { flex: 1; position: relative; overflow: hidden; background: #fff; }
 .win-resize { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; z-index: 10; }
 .app-frame { width: 100%; height: 100%; border: none; display: block; background: #fff; }
@@ -520,4 +525,9 @@ body.shutdown #desktop, body.shutdown #menubar { animation: shutdown 1.6s forwar
   overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   line-height: 1.25; word-break: break-all;
 }
+/* 卡片角标：浏览量 / 赞数 */
+.lp-meta { display: flex; align-items: center; gap: 8px; margin-top: 1px; font-size: 10.5px; color: #98989d; }
+.lp-m { display: inline-flex; align-items: center; gap: 2px; }
+.lp-m svg { width: 11px; height: 11px; }
+.lp-m-like { color: #ff6b6b; }
 .lp-empty { text-align: center; color: #86868b; font-size: 13px; padding: 60px 20px; line-height: 2; }

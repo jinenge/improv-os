@@ -125,12 +125,13 @@ const capLimit = {
   ai: makeLimiter({ windowMs: 60000, max: Number(process.env.CAP_AI_PER_MIN || 20) }),
   http: makeLimiter({ windowMs: 60000, max: Number(process.env.CAP_HTTP_PER_MIN || 30) }),
   store: makeLimiter({ windowMs: 60000, max: Number(process.env.CAP_STORE_PER_MIN || 120) }),
+  like: makeLimiter({ windowMs: 60000, max: Number(process.env.CAP_LIKE_PER_MIN || 60) }),
 };
 
 // 反盗用同源守卫：烧 token / 触发上游的接口只接受来自本站页面的请求（白名单可经 .env ALLOWED_ORIGINS 扩展）
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
 const originOk = makeOriginGuard(ALLOWED_ORIGINS);
-const GUARDED = new Set(['/api/generate', '/api/modify', '/api/repair', '/api/capability/ai', '/api/capability/http', '/api/capability/store']);
+const GUARDED = new Set(['/api/generate', '/api/modify', '/api/repair', '/api/capability/ai', '/api/capability/http', '/api/capability/store', '/api/like']);
 
 // 转义用户输入，防止 prompt 注入（换行/引号截断 system prompt）
 const escapeForPrompt = s => JSON.stringify(String(s)).slice(1, -1);
@@ -354,10 +355,10 @@ function sse(res, event, data) {
 function saveApp({ slug, name, html, tokens, secs, mode }) {
   const dir = path.join(APPS_DIR, slug);
   fs.mkdirSync(dir, { recursive: true });
-  let opens = 0, createdAt = new Date().toISOString();
-  try { const old = JSON.parse(fs.readFileSync(path.join(dir, 'meta.json'), 'utf8')); opens = old.opens || 0; createdAt = old.createdAt || createdAt; } catch {}
+  let opens = 0, likes = 0, createdAt = new Date().toISOString();
+  try { const old = JSON.parse(fs.readFileSync(path.join(dir, 'meta.json'), 'utf8')); opens = old.opens || 0; likes = old.likes || 0; createdAt = old.createdAt || createdAt; } catch {}
   fs.writeFileSync(path.join(dir, 'index.html'), html);
-  fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify({ name, slug, createdAt, updatedAt: new Date().toISOString(), tokens, secs, mode: mode || 'fast', opens }, null, 2));
+  fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify({ name, slug, createdAt, updatedAt: new Date().toISOString(), tokens, secs, mode: mode || 'fast', opens, likes }, null, 2));
   indexApp(slug);          // 落盘即更新内存索引（创建或重新生成都覆盖）
   queueIcon(slug, name);   // 异步配一个 AI 设计的图标，不阻塞主流程
 }
@@ -816,6 +817,28 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'content-type': 'image/svg+xml', 'cache-control': 'public, max-age=86400',
       'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'" });
     return res.end(fs.readFileSync(f));
+  }
+
+  if (u.pathname === '/api/like' && req.method === 'POST') {
+    // 点赞：改 meta.likes + 同步内存索引（零扫盘）。匿名公网无法硬防刷，前端 localStorage 软防重复，此处仅接口限流兜底
+    if (!lan && !capLimit.like.check(ip)) return json(res, 429, { error: '操作过于频繁', detail: '请稍后再试。' });
+    readBody(req, 2000).then(b => {
+      const slug = String(b.slug || '');
+      if (!/^[a-f0-9]{12}$/.test(slug)) return json(res, 400, { error: '缺少参数' });
+      const idx = appIndex.get(slug);
+      if (!idx) return json(res, 404, { error: '应用不存在' });
+      const delta = b.op === 'unlike' ? -1 : 1;
+      const dir = path.join(APPS_DIR, slug);
+      try {
+        const m = JSON.parse(fs.readFileSync(path.join(dir, 'meta.json'), 'utf8'));
+        m.likes = Math.max(0, (m.likes || 0) + delta);
+        fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify(m, null, 2));
+        idx.likes = m.likes;
+        logActivity('like', { slug, q: String(idx.name || '').slice(0, 60), op: delta > 0 ? 'like' : 'unlike', likes: m.likes, ip });
+        json(res, 200, { likes: m.likes });
+      } catch { json(res, 500, { error: '操作失败' }); }
+    }).catch(e => json(res, 400, { error: e.message }));
+    return;
   }
 
   if (u.pathname === '/api/apps') {

@@ -106,6 +106,14 @@ Spotlight"完整版"（mode=deep）与缓存应用"修改"按钮走真正的 ope
 - **数据源**：主服务 `logActivity()` 落 `apps/activity.ndjson`（1MB 轮转），事件 visit/gen/done/modify/repair/cap_ai/cap_http/retry429/upstream_error/limited/blocked/busy；`/api/live` 加 visitors5m/todayGens/todayTokens
 - systemd：`deploy/improv-admin.service`（system 级，User 为部署用户）。鉴权 query/cookie/Bearer 三态 + timingSafeEqual；query 进来即种 HttpOnly cookie 并 302 清地址栏。
 
+## 浏览量 + 点赞（2026-06-13）
+
+- **浏览量**复用既有 `opens`（每次打开 +1，早已在索引），无新数据；只是把它和点赞做成可见的热度信号。
+- **点赞**：`meta.likes` 字段（与 opens 对称，落盘 + 进索引）。`POST /api/like {slug, op:'like'|'unlike'}` → `likes±1`（clamp ≥0）写盘 + 同步内存索引（零扫盘），返回权威 likes。
+- 接口进 `GUARDED`（公网跨站被同源守卫拒，内网免）+ `capLimit.like`（默认 60/min/IP，`CAP_LIKE_PER_MIN`）。匿名无法硬防刷，前端 `localStorage` 记 `liked:<slug>` 软防重复 + 高亮。
+- **展示**：应用窗口操作栏爱心按钮（toggle、乐观更新、服务端权威值修正）；启动台卡片角标 `eye 浏览量 / heart 赞数`；启动台新增「最受欢迎」分类（有人点赞才出现，按 likes 降序）。
+- e2e：`tests/like.e2e.test.mjs`（+1/索引即时反映、unlike clamp 不为负、404、公网跨站 403）。
+
 ## 应用索引（2026-06-13）
 
 启动台/Spotlight"拉取应用很卡"定位：`listApps()` 每次请求全量同步扫盘（`readdirSync` + 每应用 2×`existsSync` + `readFileSync`，`1+3N` 次同步 FS 调用），单进程下阻塞事件循环、拖慢同期所有请求（含生成 SSE），随应用数线性恶化；且 `/api/apps`·`/api/search`·`/api/stats` 各扫一遍无缓存。

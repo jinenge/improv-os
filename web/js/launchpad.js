@@ -3,6 +3,7 @@
 import { createWindow } from './wm.js';
 import { openSearchApp, timeAgo } from './apps.js';
 import { SPOT_HINT } from './spotlight.js';
+import { UI } from './icons.js';
 
 // ---------- macOS 系统色渐变（上浅下深）----------
 const GRADS = [
@@ -98,10 +99,11 @@ async function refresh(win) {
     const r = await fetch('/api/apps');
     state.apps = (await r.json()).apps || [];
   } catch { state.apps = []; }
-  // 分类胶囊：全部 + 实际出现的分类（按数量降序）
+  // 分类胶囊：全部 + （有人点赞时）最受欢迎 + 实际出现的分类（按数量降序）
   const counts = new Map();
   for (const a of state.apps) counts.set(catOf(a.name), (counts.get(catOf(a.name)) || 0) + 1);
-  const cats = ['全部', ...[...counts.entries()].sort((x, y) => y[1] - x[1]).map(([c]) => c)];
+  const hasLikes = state.apps.some(a => (a.likes || 0) > 0);
+  const cats = ['全部', ...(hasLikes ? ['最受欢迎'] : []), ...[...counts.entries()].sort((x, y) => y[1] - x[1]).map(([c]) => c)];
   const catsEl = win.body.querySelector('.lp-cats');
   catsEl.innerHTML = cats.map(c => `<button class="lp-cat${c === state.cat ? ' on' : ''}" data-cat="${c}">${c}</button>`).join('');
   catsEl.querySelectorAll('.lp-cat').forEach(b => b.addEventListener('click', () => {
@@ -116,13 +118,21 @@ function render(win, state) {
   const grid = win.body.querySelector('.lp-grid');
   const empty = win.body.querySelector('.lp-empty');
   let list = state.apps;
-  if (state.cat !== '全部') list = list.filter(a => catOf(a.name) === state.cat);
+  if (state.cat === '最受欢迎') list = state.apps.filter(a => (a.likes || 0) > 0).sort((x, y) => (y.likes || 0) - (x.likes || 0));
+  else if (state.cat !== '全部') list = list.filter(a => catOf(a.name) === state.cat);
   if (state.q) list = list.filter(a => a.name.toLowerCase().includes(state.q));
-  grid.innerHTML = list.map((a, i) => `
-    <button class="lp-app" data-i="${i}" title="打开 ${a.opens || 0} 次 · ${timeAgo(a.updatedAt || a.createdAt)}">
+  grid.innerHTML = list.map((a, i) => {
+    const meta = [
+      (a.opens ? `<span class="lp-m">${UI.eye}${a.opens}</span>` : ''),
+      (a.likes ? `<span class="lp-m lp-m-like">${UI.heart}${a.likes}</span>` : ''),
+    ].join('');
+    return `
+    <button class="lp-app" data-i="${i}" title="打开 ${a.opens || 0} 次 · ${a.likes || 0} 赞 · ${timeAgo(a.updatedAt || a.createdAt)}">
       <span class="lp-icon">${a.icon ? `<img src="/api/icon?slug=${a.slug}" alt="" loading="lazy">` : launchpadIcon(a.name)}</span>
       <span class="lp-name">${esc(a.name)}</span>
-    </button>`).join('');
+      ${meta ? `<span class="lp-meta">${meta}</span>` : ''}
+    </button>`;
+  }).join('');
   grid.querySelectorAll('.lp-app').forEach(b => b.addEventListener('click', () => {
     const a = list[Number(b.dataset.i)];
     openSearchApp({ name: a.name, slug: a.slug, cached: true, meta: a });
@@ -132,7 +142,7 @@ function render(win, state) {
     empty.innerHTML = `尚未安装任何应用。<br>${SPOT_HINT} 搜索想要的应用，安装后会出现在这里。`;
   } else if (!list.length) {
     empty.hidden = false;
-    empty.textContent = '没有匹配的应用。';
+    empty.textContent = state.cat === '最受欢迎' ? '还没有人点赞。打开应用点个赞，热门榜就出现了。' : '没有匹配的应用。';
   } else empty.hidden = true;
   win.setStatus?.(`${state.apps.length} 个应用`);
 }

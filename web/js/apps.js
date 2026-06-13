@@ -40,6 +40,7 @@ export function launchApp(app, dockEl) {
 // Spotlight 召唤的应用（缓存命中 → 秒开；未命中 → 生成并落盘）
 export function openSearchApp({ name, slug, cached, mode = 'fast', meta }) {
   const win = createWindow({ title: name, width: 800, height: 560 });
+  mountLikeButton(win, slug, meta);   // 爱心点赞（toggle，localStorage 软防重复）
   win.addAction(UI.wand, '修改此应用', () => promptModify(win, name, slug));
   win.addAction(UI.refresh, '重新生成', () => regen(win, 'search', name, slug, slug));
   win.addAction(UI.share, '复制分享链接', () => {
@@ -58,6 +59,37 @@ export function openSearchApp({ name, slug, cached, mode = 'fast', meta }) {
     runGeneration({ win, type: 'search', q: name, mode, appId: slug }).catch(swallow);
   }
   return win;
+}
+
+// 窗口操作栏的点赞按钮：显示赞数，点击 toggle。匿名场景用 localStorage 记住「我赞过哪些」做软防重复 + 高亮
+function mountLikeButton(win, slug, meta) {
+  if (!slug) return;
+  const key = 'liked:' + slug;
+  let liked = false;
+  try { liked = localStorage.getItem(key) === '1'; } catch {}
+  let count = Number(meta?.likes) || 0;
+  const btn = win.addAction(UI.heart, '点赞', () => toggle());
+  btn.classList.add('like-btn');
+  const paint = () => {
+    btn.innerHTML = (liked ? UI.heartFilled : UI.heart) + `<span class="like-n">${count}</span>`;
+    btn.classList.toggle('liked', liked);
+  };
+  paint();
+  let busy = false;
+  async function toggle() {
+    if (busy) return;
+    busy = true;
+    const next = !liked;
+    liked = next; count = Math.max(0, count + (next ? 1 : -1));   // 乐观更新
+    paint();
+    try { localStorage.setItem(key, next ? '1' : '0'); } catch {}
+    try {
+      const r = await fetch('/api/like', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ slug, op: next ? 'like' : 'unlike' }) });
+      const d = await r.json();
+      if (typeof d.likes === 'number') { count = d.likes; paint(); }   // 服务端权威值修正
+    } catch {}
+    busy = false;
+  }
 }
 
 function regen(win, type, q, slug, appId) {
