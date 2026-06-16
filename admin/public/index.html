@@ -279,7 +279,7 @@ async function refreshCharts() {
 
 // ---------- 活动流 ----------
 const FILTERS = [['all','全部'],['gen','生成'],['mod','修改/修复'],['cap','能力调用'],['warn','异常/限流'],['visit','访客']];
-const CAT = t => ['gen','done','busy','busy_deep'].includes(t) ? 'gen' : ['modify','repair'].includes(t) ? 'mod' : ['cap_ai','cap_http'].includes(t) ? 'cap' : ['retry429','upstream_error','limited','blocked','origin_block','agent_error'].includes(t) ? 'warn' : t === 'visit' ? 'visit' : 'gen';
+const CAT = t => ['gen','done','busy','busy_deep'].includes(t) ? 'gen' : ['modify','repair'].includes(t) ? 'mod' : ['cap_ai','cap_http','cap_compute'].includes(t) ? 'cap' : ['retry429','upstream_error','limited','blocked','origin_block','agent_error'].includes(t) ? 'warn' : t === 'visit' ? 'visit' : 'gen';
 let filterOn = 'all';
 function renderFilters() {
   $('#filters').innerHTML = FILTERS.map(([k, t]) => `<button data-f="${k}" class="${k === 'all' ? 'on' : ''}">${t}</button>`).join('');
@@ -302,6 +302,7 @@ function evHtml(e) {
     case 'repair': badge = '修复'; cls = 'b-mod'; txt = `「${esc(e.q)}」 ${esc(e.error || '')}`; break;
     case 'cap_ai': badge = 'AI'; cls = 'b-cap'; txt = `应用「${esc(e.appName)}」调用内嵌 AI`; break;
     case 'cap_http': badge = 'HTTP'; cls = 'b-cap'; txt = `应用拉取 ${esc(e.host)}`; break;
+    case 'cap_compute': badge = '计算'; cls = 'b-cap'; txt = `「${esc(e.appName)}」调 compute · ${esc(e.task || '')}`; break;
     case 'retry429': badge = '限速'; cls = 'b-warn'; txt = `上游 429，第 ${e.attempt} 次退避重试（${e.backoff}ms）`; break;
     case 'upstream_error': badge = '上游错'; cls = 'b-fail'; txt = `HTTP ${e.status}（重试 ${e.retries} 次后放弃）`; break;
     case 'limited': badge = '限流'; cls = 'b-warn'; txt = `${e.reason === 'ip' ? '单 IP 超额' : e.reason === 'daily' ? '日次数熔断' : 'token 熔断'}${e.q ? ' · 「' + esc(e.q) + '」' : ''}`; break;

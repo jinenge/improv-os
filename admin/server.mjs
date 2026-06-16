@@ -172,6 +172,7 @@ const CONF_KEYS = {
   DAILY_CAP:          { min: 1, max: 10000000, def: 3000, label: '全站每日次数', hint: '日熔断', kind: 'number' },
   DAILY_TOKEN_BUDGET: { min: 0, max: 1000000000, def: 0, label: '每日 token 预算', hint: '0=不限（合作期）', kind: 'number' },
   UPSTREAM_MAX_RETRY: { min: 0, max: 10, def: 5, label: '429 重试次数', hint: '上游限速退避重试', kind: 'number' },
+  CAP_COMPUTE_PER_MIN:{ min: 1, max: 200, def: 30, label: 'os.compute 每分钟/IP', hint: '形式原语：生成应用调它的频率会比 ai.ask 高（计算器每按一次都可能调），默认 30', kind: 'number' },
   MODEL_MODE:         { def: 'normal', label: '运行模式', hint: 'normal=公司网关；ai_gateway=ai.fzhiyu.dev（推荐，快且便宜）；low_power=OpenRouter 免费池', kind: 'enum', options: ['normal', 'ai_gateway', 'low_power'] },
   AI_MODEL:           { def: 'gpt-5.3-codex-spark', label: 'AI 网关模型', hint: 'ai_gateway 模式用的模型 id（gpt-5.3-codex-spark 实测 533 tok/s）', kind: 'text' },
   OPENROUTER_MODEL:   { def: 'openrouter/free', label: '低功率模型', hint: '默认用 OpenRouter 免费路由器；可替换为具体 free 模型 id', kind: 'text' },

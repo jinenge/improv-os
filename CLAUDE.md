@@ -106,6 +106,19 @@ Spotlight"完整版"（mode=deep）与缓存应用"修改"按钮走真正的 ope
 - **数据源**：主服务 `logActivity()` 落 `apps/activity.ndjson`（1MB 轮转），事件 visit/gen/done/modify/repair/cap_ai/cap_http/retry429/upstream_error/limited/blocked/busy；`/api/live` 加 visitors5m/todayGens/todayTokens
 - systemd：`deploy/improv-admin.service`（system 级，User 为部署用户）。鉴权 query/cookie/Bearer 三态 + timingSafeEqual；query 进来即种 HttpOnly cookie 并 302 清地址栏。
 
+## 形式原语 os.compute（2026-06-15 上线，Stage 1）
+
+ImprovOS 元梗的第一个落地"形式原语"：**把"计算"伪装成系统调用，背后是 AI**。生成应用通过 `await os.compute(task)` 把数学/算法/逻辑/序列生成任务交给系统，看似系统能力，实际是 textCall→上游模型。
+
+- **架构**：复用现有能力桥三层（iframe SDK → bridge.js → /api/capability/compute → capCompute → textCall）。走 MODEL_MODE 路由统一切换上游（ai_gateway/normal/low_power 自动跟随）。
+- **server**：`capCompute(task, appName, cb)` 用严锁 system prompt（"你是计算引擎，不是助手，直接给结果不寒暄"+ 拒绝列表覆盖代码生成/文创/实时查询/敏感话题），任务裁剪 2KB，输出 2.5K maxTokens。
+- **SDK**：`window.os.compute(task) → Promise<string>`（注入到 sandbox iframe，与 ai/http/store 并列）。
+- **限流**：`CAP_COMPUTE_PER_MIN=30`（比 ai.ask 大一档，因生成应用调用频率高——计算器每按一次等号都可能调）；进 `GUARDED` 同源守卫；内网免限流。
+- **prompt 暴露**：SYSTEM_PROMPT 与 BROWSER_PROMPT 同时加 `os.compute(task)` 说明，明示典型用法（**计算器必用 os.compute 做运算**；画图调它生成坐标点序列；音乐调它生成音符；棋类调它建议落子；浏览器网页调它生成虚构股价/价格分布等可信数据）。**强约束**：UI 上以"系统"措辞呈现，绝不暴露"AI 计算"字眼——延迟恍然是核心 vibe（参见 `docs/superpowers/specs/2026-06-15-ai-formal-primitives-design.md`）。
+- **观测**：`logActivity('cap_compute', { appName, task })` 落 activity.ndjson；admin 面板 feed 加 "计算" 徽章；filter 加 cap 类。
+- **测试**：`tests/capability-compute.e2e.test.mjs`（mock 上游 + 端点正常 / 缺参 400 / 同源守卫 403 / jailbreak 拒绝标记 / 长任务裁剪 / 限流 / smoke）。
+- **后续**：Stage 1 上线一周后看活动日志中 cap_compute 采纳率：>60% 应该用的场景被生成模型调用 → 开 Stage 2（os.evaluate + os.simulate）；<30% → 重写 system prompt 暴露语气，再不行砍接口。
+
 ## 低功率模式（2026-06-14）
 
 当主模型成本太高时，`MODEL_MODE=low_power` 会把快轨与修复统一切到 OpenRouter 免费池（默认 `openrouter/free`），由 `OPENROUTER_API_KEY` 提供授权。`MODEL_MODE=normal` 切回现有 Anthropic 兼容主链路；运维面板可在线改 `.env` 并重启主服务，前端会显示“低功率模式”角标并在首次进入时弹公告。
