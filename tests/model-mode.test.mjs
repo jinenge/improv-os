@@ -7,6 +7,7 @@ test('normalizeModelMode falls back to normal', () => {
   assert.strictEqual(normalizeModelMode('low_power'), 'low_power');
   assert.strictEqual(normalizeModelMode('ai_gateway'), 'ai_gateway');
   assert.strictEqual(normalizeModelMode('deepseek'), 'deepseek');
+  assert.strictEqual(normalizeModelMode('zhipu_gateway'), 'zhipu_gateway');
   assert.strictEqual(normalizeModelMode('weird'), 'normal');
   assert.strictEqual(normalizeModelMode(''), 'normal');
 });
@@ -27,6 +28,13 @@ test('resolveModelRoute maps modes to providers', () => {
   // 默认 deepseek 模型
   assert.deepStrictEqual(resolveModelRoute({ mode: 'deepseek', normalModel: 'claude-sonnet-4-6' }), {
     provider: 'deepseek', modelMode: 'deepseek', model: 'deepseek-v4-flash'
+  });
+  assert.deepStrictEqual(resolveModelRoute({ mode: 'zhipu_gateway', normalModel: 'claude-sonnet-4-6', zhipuModel: 'glm-5.2' }), {
+    provider: 'zhipu', modelMode: 'zhipu_gateway', model: 'glm-5.2'
+  });
+  // 默认 zhipu 模型
+  assert.deepStrictEqual(resolveModelRoute({ mode: 'zhipu_gateway', normalModel: 'claude-sonnet-4-6' }), {
+    provider: 'zhipu', modelMode: 'zhipu_gateway', model: 'glm-5.2'
   });
 });
 

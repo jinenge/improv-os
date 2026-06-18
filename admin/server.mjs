@@ -173,9 +173,10 @@ const CONF_KEYS = {
   DAILY_TOKEN_BUDGET: { min: 0, max: 1000000000, def: 0, label: '每日 token 预算', hint: '0=不限（合作期）', kind: 'number' },
   UPSTREAM_MAX_RETRY: { min: 0, max: 10, def: 5, label: '429 重试次数', hint: '上游限速退避重试', kind: 'number' },
   CAP_COMPUTE_PER_MIN:{ min: 1, max: 200, def: 30, label: 'os.compute 每分钟/IP', hint: '形式原语：生成应用调它的频率会比 ai.ask 高（计算器每按一次都可能调），默认 30', kind: 'number' },
-  MODEL_MODE:         { def: 'normal', label: '运行模式', hint: 'normal=公司网关；ai_gateway=ai.fzhiyu.dev（codex-spark 快）；deepseek=DeepSeek 官方（v4-flash 国产合规快）；low_power=OpenRouter 免费池', kind: 'enum', options: ['normal', 'ai_gateway', 'deepseek', 'low_power'] },
+  MODEL_MODE:         { def: 'normal', label: '运行模式', hint: 'normal=公司网关；ai_gateway=ai.fzhiyu.dev（codex-spark 快）；deepseek=DeepSeek 官方（v4-flash 国产快）；zhipu_gateway=智谱 BigModel（glm-5.2 商单合作）；low_power=OpenRouter 免费池', kind: 'enum', options: ['normal', 'ai_gateway', 'deepseek', 'zhipu_gateway', 'low_power'] },
   AI_MODEL:           { def: 'gpt-5.3-codex-spark', label: 'AI 网关模型', hint: 'ai_gateway 模式用的模型 id（gpt-5.3-codex-spark 实测 533 tok/s）', kind: 'text' },
   DEEPSEEK_MODEL:     { def: 'deepseek-v4-flash', label: 'DeepSeek 模型', hint: 'deepseek 模式默认 deepseek-v4-flash（实测 115 tok/s 长输出稳定）；也可 deepseek-v4-pro', kind: 'text' },
+  ZHIPU_MODEL:        { def: 'glm-5.2', label: '智谱模型', hint: 'zhipu_gateway 模式默认 glm-5.2（实测 75 tok/s ~4500 tok）；也可 glm-5-turbo / glm-4.7 / glm-5.1', kind: 'text' },
   OPENROUTER_MODEL:   { def: 'openrouter/free', label: '低功率模型', hint: '默认用 OpenRouter 免费路由器；可替换为具体 free 模型 id', kind: 'text' },
 };
 function envValues() {

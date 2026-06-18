@@ -35,6 +35,10 @@ const AI_BASE_URL = process.env.AI_BASE_URL || 'https://ai.fzhiyu.dev/v1';
 const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || '';
 const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash';
 const DEEPSEEK_BASE_URL = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1';
+// 智谱 BigModel API（OpenAI 兼容）：glm-5.2 实测 75 tok/s 单次 ~4500 token，国产合规，WAIC 商单合作上游
+const ZHIPU_KEY = process.env.ZHIPU_API_KEY || '';
+const ZHIPU_MODEL = process.env.ZHIPU_MODEL || 'glm-5.2';
+const ZHIPU_BASE_URL = process.env.ZHIPU_BASE_URL || 'https://open.bigmodel.cn/api/paas/v4';
 const MAX_TOKENS = Number(process.env.MAX_TOKENS || 12000);
 const APPS_DIR = path.join(ROOT, 'apps');
 const WEB_DIR = path.join(ROOT, 'web');
@@ -43,6 +47,7 @@ if (!API_KEY && MODEL_MODE === 'normal') { console.error('缺少 ANTHROPIC_AUTH_
 if (!OPENROUTER_KEY && MODEL_MODE === 'low_power') { console.error('缺少 OPENROUTER_API_KEY'); process.exit(1); }
 if (!AI_KEY && MODEL_MODE === 'ai_gateway') { console.error('缺少 AI_API_KEY'); process.exit(1); }
 if (!DEEPSEEK_KEY && MODEL_MODE === 'deepseek') { console.error('缺少 DEEPSEEK_API_KEY'); process.exit(1); }
+if (!ZHIPU_KEY && MODEL_MODE === 'zhipu_gateway') { console.error('缺少 ZHIPU_API_KEY'); process.exit(1); }
 fs.mkdirSync(APPS_DIR, { recursive: true });
 
 // ---------- 全局统计 ----------
@@ -327,7 +332,7 @@ function buildUserPrompt(type, q, ctx, vw) {
 // ---------- 上游调用 ----------
 const UPSTREAM_MAX_RETRY = Number(process.env.UPSTREAM_MAX_RETRY || 5);
 function currentRoute() {
-  return resolveModelRoute({ mode: MODEL_MODE, normalModel: MODEL, lowPowerModel: OPENROUTER_MODEL, aiModel: AI_MODEL, deepseekModel: DEEPSEEK_MODEL });
+  return resolveModelRoute({ mode: MODEL_MODE, normalModel: MODEL, lowPowerModel: OPENROUTER_MODEL, aiModel: AI_MODEL, deepseekModel: DEEPSEEK_MODEL, zhipuModel: ZHIPU_MODEL });
 }
 function runtimeState() {
   const route = currentRoute();
@@ -532,6 +537,7 @@ const PROVIDER_CFG = {
   openrouter: () => ({ provider: 'openrouter', baseUrl: OPENROUTER_BASE_URL, key: OPENROUTER_KEY, model: OPENROUTER_MODEL, label: '低功率模式' }),
   ai_gateway: () => ({ provider: 'ai_gateway', baseUrl: AI_BASE_URL, key: AI_KEY, model: AI_MODEL, label: '生成服务' }),
   deepseek:   () => ({ provider: 'deepseek',   baseUrl: DEEPSEEK_BASE_URL, key: DEEPSEEK_KEY, model: DEEPSEEK_MODEL, label: 'DeepSeek 服务' }),
+  zhipu:      () => ({ provider: 'zhipu',      baseUrl: ZHIPU_BASE_URL,    key: ZHIPU_KEY,    model: ZHIPU_MODEL,    label: '智谱服务' }),
 };
 
 function textCall(opts, cb, attempt = 0) {
@@ -801,6 +807,18 @@ function deepProviderConfig() {
       name: 'DeepSeek',
       baseURL: DEEPSEEK_BASE_URL,
       apiKey: DEEPSEEK_KEY,
+      modelId: route.model,
+      modelName: route.model,
+    };
+  }
+  if (route.provider === 'zhipu') {
+    // 智谱 BigModel API（OpenAI 兼容）；glm-5.2 中等速度（~75 tok/s）+ 中等输出（~4500 tok）；WAIC 商单上游
+    return {
+      sdk: '@ai-sdk/openai-compatible',
+      providerId: 'zhipu',
+      name: '智谱 BigModel',
+      baseURL: ZHIPU_BASE_URL,
+      apiKey: ZHIPU_KEY,
       modelId: route.model,
       modelName: route.model,
     };
